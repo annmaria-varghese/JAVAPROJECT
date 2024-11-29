@@ -1,0 +1,522 @@
+import javax.swing.*;
+import java.awt.*;
+import java.awt.event.*;
+import java.time.LocalDateTime;
+import java.time.format.DateTimeFormatter;
+import java.util.Random;
+import java.util.Vector;
+import java.awt.image.BufferedImage;
+import javax.imageio.ImageIO;
+import java.io.IOException;
+import java.net.MalformedURLException;
+import java.net.URL;
+
+class Patient 
+{
+    private String name, gender, tokenNumber, disease = "N/A", doctorName = "N/A";
+    private int age;
+    private double medicalFee = 0;
+
+     public Patient(String name, int age, String gender, String tokenNumber) 
+   {
+        this.name = name;
+        this.age = age;
+        this.gender = gender;
+        this.tokenNumber = tokenNumber;
+    }
+
+    public void updateDetails(String disease, String doctorName, double medicalFee) 
+     {
+        this.disease = disease;
+        this.doctorName = doctorName;
+        this.medicalFee = medicalFee;
+      }
+
+    public void displayBill() 
+     {
+        String dateTime = LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss"));
+        JOptionPane.showMessageDialog(null,
+                String.format("--- BILL DETAILS ---\nPatient: %s\nDoctor: %s\nDisease: %s\nFee: $%.2f\nDate & Time: %s\n--------------------",
+                        name, doctorName, disease, medicalFee, dateTime));
+    }
+
+    public String getName() 
+    {
+        return name;
+    }
+
+    public int getAge() 
+    {
+        return age;
+    }
+
+    public String getGender() 
+    {
+        return gender;
+    }
+
+    public String getTokenNumber() 
+    {
+        return tokenNumber;
+    }
+
+    public String getDisease() 
+    {
+        return disease;
+    }
+
+    public String getDoctorName() 
+    {
+        return doctorName;
+    }
+
+    public double getMedicalFee() 
+    {
+        return medicalFee;
+    }
+
+    @Override
+    public String toString() 
+   {
+        return String.format("%-15s %-6d %-10s %-15s %-20s %-20s %-10.2f",
+                name, age, gender, tokenNumber, disease, doctorName, medicalFee);
+    }
+}
+
+class PatientRegistry 
+ {
+    private Vector<Patient> patients = new Vector<>();
+
+    public boolean addPatient(Patient patient) 
+   {
+        if (patients.size() < 100) 
+       {
+            patients.add(patient);
+            return true;
+        }
+        return false;
+    }
+
+    public Patient findPatientByToken(String token) 
+    {
+        for (Patient patient : patients) 
+         {
+            if (patient.getTokenNumber().equals(token)) return patient;
+        }
+        return null;
+    }
+
+    public Vector<Patient> getAllPatients() 
+    {
+        return patients;
+    }
+}
+
+class BackgroundPanel extends JPanel 
+{
+    private BufferedImage backgroundImage;
+
+    public BackgroundPanel(String imageUrl) 
+     {
+        try 
+          {
+            URL url = new URL(imageUrl);
+            this.backgroundImage = ImageIO.read(url);
+        } 
+
+          catch (MalformedURLException e) 
+            {
+            System.err.println("Invalid URL: " + e.getMessage());
+            } 
+             catch (IOException e) 
+           {
+            System.err.println("Error loading image: " + e.getMessage());
+            }
+
+    }
+
+    @Override
+    protected void paintComponent(Graphics g) 
+      {
+        super.paintComponent(g);
+        if (backgroundImage != null) 
+        {
+            	g.drawImage(backgroundImage, 0, 0, getWidth(), getHeight(), this);
+        }
+    }
+}
+
+public class HospitalManagementGUI 
+  {
+    private PatientRegistry registry = new PatientRegistry();
+    private JFrame frame;
+    private JTextField nameField, ageField, otherGenderField;
+    private ButtonGroup genderGroup;
+    private JRadioButton maleButton, femaleButton, otherButton;
+    private JPasswordField passwordField;
+    private JTable patientTable;
+    private final String adminPassword = "MICKEYMOUSE";
+
+    public static void main(String[] args) 
+     {
+        SwingUtilities.invokeLater(() -> new HospitalManagementGUI().createAndShowGUI());
+    }
+
+    private void createAndShowGUI() 
+    {
+        frame = new JFrame("JJ HOSPITAL");
+        frame.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
+        frame.setSize(800, 600);
+        frame.setLocationRelativeTo(null);
+        showWelcomeScreen();
+        frame.setVisible(true);
+    }
+
+    private void showWelcomeScreen() 
+    {
+        String welcomeImageUrl = "https://img.freepik.com/premium-vector/modern-colored-medical-hospital-building-with-sky-clouds_1322206-57571.jpg?w=826"; // Welcome image
+        BackgroundPanel welcomePanel = new BackgroundPanel(welcomeImageUrl);
+        welcomePanel.setLayout(new GridBagLayout());
+        GridBagConstraints gbc = new GridBagConstraints();
+        gbc.gridx = 0;
+        gbc.insets = new Insets(10, 0, 10, 0);
+        
+        JLabel hospitalLabel = new JLabel("JJ Hospital", JLabel.CENTER);
+        hospitalLabel.setFont(new Font("Serif", Font.BOLD, 70));
+        hospitalLabel.setForeground(Color.BLACK);
+        gbc.gridy = 0;
+        welcomePanel.add(hospitalLabel, gbc);
+
+        JLabel subtitleLabel = new JLabel("A Bridge to Better Health", JLabel.CENTER);
+        subtitleLabel.setFont(new Font("Serif", Font.ITALIC, 50));
+        subtitleLabel.setForeground(Color.BLACK);
+        gbc.gridy = 1;
+        welcomePanel.add(subtitleLabel, gbc);
+
+        // Timer to switch to the main menu
+        Timer timer = new Timer(2000, e -> showMainMenu());
+        timer.setRepeats(false);
+        timer.start();
+
+        setContentPanel(welcomePanel);
+    }
+
+    private void showMainMenu() 
+     {
+        String imageUrl = "https://www.hiranandanihospital.org/public/international-patient/request-quote.jpg"; // Main menu image
+        BackgroundPanel mainMenuPanel = new BackgroundPanel(imageUrl);
+        mainMenuPanel.setLayout(new GridBagLayout());
+        GridBagConstraints gbc = new GridBagConstraints();
+        gbc.insets = new Insets(10, 10, 10, 10);
+
+        JButton registerButton = createButton("Register Patient", e -> showRegistrationForm());
+        JButton loginButton = createButton("Admin Login", e -> showLoginForm());
+        JButton exitButton = createButton("Exit", e -> System.exit(0));
+
+        gbc.gridx = 0;
+        gbc.gridy = 0;
+        mainMenuPanel.add(registerButton, gbc);
+        gbc.gridy = 1;
+        mainMenuPanel.add(loginButton, gbc);
+        gbc.gridy = 2;
+        mainMenuPanel.add(exitButton, gbc);
+
+        setContentPanel(mainMenuPanel);
+    }
+
+    private JButton createButton(String text, ActionListener listener) 
+    {
+        JButton button = new JButton(text);
+        button.setPreferredSize(new Dimension(250, 50));
+        button.setFont(new Font("Arial", Font.BOLD, 16));
+        button.setBackground(new Color(0, 153, 255));
+        button.setForeground(Color.WHITE);
+        button.setBorder(BorderFactory.createLineBorder(Color.BLACK, 2));
+        button.setFocusPainted(false);
+        button.addActionListener(listener);
+        button.addMouseListener(new java.awt.event.MouseAdapter() 
+     {
+            public void mouseEntered(java.awt.event.MouseEvent evt) 
+           {
+                button.setBackground(new Color(0, 122, 204));
+            }
+            public void mouseExited(java.awt.event.MouseEvent evt) 
+            {
+                button.setBackground(new Color(0, 153, 255));
+            }
+        });
+        return button;
+    }
+
+    private JButton createBackButton(ActionListener listener) 
+    {
+        JButton backButton = new JButton("Back");
+        backButton.setPreferredSize(new Dimension(150, 60));
+        backButton.setFont(new Font("Arial", Font.BOLD, 16));
+        backButton.setBackground(new Color(255, 51, 51));
+        backButton.setForeground(Color.WHITE);
+        backButton.setBorder(BorderFactory.createLineBorder(Color.BLACK, 2));
+        backButton.setFocusPainted(false);
+        backButton.addActionListener(listener);
+        return backButton;
+    }
+
+    private void showRegistrationForm() 
+      {
+        // Using a regular JPanel without a background image
+        JPanel panel = new JPanel();
+        panel.setLayout(new BorderLayout());
+
+        JPanel inputPanel = new JPanel(new GridLayout(6, 2, 10, 10));
+        inputPanel.setBorder(BorderFactory.createEmptyBorder(10, 10, 10, 10));
+
+        inputPanel.add(new JLabel("Name:"));
+        nameField = new JTextField(20);
+        inputPanel.add(nameField);
+
+        inputPanel.add(new JLabel("Age:"));
+        ageField = new JTextField(20);
+        inputPanel.add(ageField);
+
+        inputPanel.add(new JLabel("Gender:"));
+        JPanel genderPanel = new JPanel(new FlowLayout());
+        maleButton = new JRadioButton("Male");
+        femaleButton = new JRadioButton("Female");
+        otherButton = new JRadioButton("Other");
+        otherGenderField = new JTextField(10);
+
+        // Initially disable the custom gender field
+        otherGenderField.setEnabled(false);
+
+        genderGroup = new ButtonGroup();
+        genderGroup.add(maleButton);
+        genderGroup.add(femaleButton);
+        genderGroup.add(otherButton);
+
+        // Add ActionListeners to radio buttons to enable/disable the custom gender field
+        otherButton.addActionListener(e -> otherGenderField.setEnabled(true));
+        maleButton.addActionListener(e -> otherGenderField.setEnabled(false));
+        femaleButton.addActionListener(e -> otherGenderField.setEnabled(false));
+
+        genderPanel.add(maleButton);
+        genderPanel.add(femaleButton);
+        genderPanel.add(otherButton);
+        genderPanel.add(new JLabel("Custom:"));
+        genderPanel.add(otherGenderField);
+
+        inputPanel.add(genderPanel);
+
+        JButton submitButton = createButton("Register", e -> registerPatient());
+        inputPanel.add(submitButton);
+
+        JButton backButton = createBackButton(e -> showMainMenu());
+        inputPanel.add(backButton);
+
+        panel.add(inputPanel, BorderLayout.CENTER);
+        setContentPanel(panel);
+    }
+
+    private void registerPatient() 
+    {
+        try 
+           {
+            String name = nameField.getText();
+            int age = Integer.parseInt(ageField.getText());
+            String gender = getSelectedGender();
+            if (gender.isEmpty()) return;
+
+            String token = generateUniqueToken();
+            Patient newPatient = new Patient(name, age, gender, token);
+
+            if (registry.addPatient(newPatient)) 
+             {
+                String dateTime = LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss"));
+                JOptionPane.showMessageDialog(frame, "Patient registered successfully!\nToken: " + token + "\nDate & Time: " + dateTime);
+                showMainMenu();
+             }
+            else 
+            {
+                JOptionPane.showMessageDialog(frame, "Registration limit reached.");
+            }
+        } 
+     catch (NumberFormatException e) 
+       {
+            JOptionPane.showMessageDialog(frame, "Please enter a valid age.");
+        }
+    }
+
+    private String getSelectedGender() 
+     {
+        if (maleButton.isSelected()) return "Male";
+        if (femaleButton.isSelected()) return "Female";
+        if (otherButton.isSelected()) 
+        {
+            String customGender = otherGenderField.getText().trim();
+            if (customGender.isEmpty()) 
+           {
+                JOptionPane.showMessageDialog(frame, "Please specify the custom gender.");
+                return "";
+            }
+            return customGender;
+       }
+        JOptionPane.showMessageDialog(frame, "Please select a gender.");
+        return "";
+    }
+
+    private void showLoginForm() 
+      {
+        // Use a regular JPanel without a background image
+        JPanel panel = new JPanel();
+        panel.setLayout(new BorderLayout());
+
+        JPanel centerPanel = new JPanel(new GridBagLayout());
+        centerPanel.setBackground(new Color(144, 238, 144)); // Optional: set a background color
+        GridBagConstraints gbc = new GridBagConstraints();
+        gbc.insets = new Insets(10, 10, 10, 10);
+        gbc.anchor = GridBagConstraints.CENTER;
+
+        JLabel passwordLabel = new JLabel("Admin Password:");
+        passwordLabel.setFont(new Font("Arial", Font.BOLD, 18));
+        centerPanel.add(passwordLabel, gbc);
+
+        passwordField = new JPasswordField(30);
+        passwordField.setPreferredSize(new Dimension(250, 40));
+        gbc.gridy = 1;
+        centerPanel.add(passwordField, gbc);
+
+        gbc.gridy = 2;
+        gbc.insets = new Insets(20, 10, 10, 10);
+
+        JPanel buttonPanel = new JPanel(new FlowLayout(FlowLayout.CENTER));
+        JButton loginButton = createButton("Login", e -> loginAdmin());
+        JButton backButton = createBackButton(e -> showMainMenu());
+
+        Dimension buttonSize = new Dimension(150, 60);
+        loginButton.setPreferredSize(buttonSize);
+        backButton.setPreferredSize(buttonSize);
+
+        buttonPanel.add(loginButton);
+        buttonPanel.add(backButton);
+        centerPanel.add(buttonPanel, gbc);
+
+        panel.add(centerPanel, BorderLayout.CENTER);
+        setContentPanel(panel);
+    }
+
+    private void loginAdmin() 
+     {
+        String enteredPassword = new String(passwordField.getPassword());
+        if (enteredPassword.equals(adminPassword)) 
+       {
+            showAdminPanel();
+        } 
+      else 
+         {
+            JOptionPane.showMessageDialog(frame, "Invalid password.");
+        }
+    }
+
+    private void showAdminPanel() 
+     {
+        JPanel panel = new JPanel(new BorderLayout());
+        JButton viewAllPatientsButton = createButton("View All Patients", e -> viewAllPatients());
+        JButton editPatientButton = createButton("Edit Patient by Token", e -> updatePatientDetails());
+        JPanel buttonPanel = new JPanel(new FlowLayout());
+        buttonPanel.add(viewAllPatientsButton);
+        buttonPanel.add(editPatientButton);
+        panel.add(buttonPanel, BorderLayout.CENTER);
+
+        JButton backButton = createBackButton(e -> showMainMenu());
+        panel.add(backButton, BorderLayout.SOUTH);
+
+        setContentPanel(panel);
+    }
+
+    private void viewAllPatients() 
+      {
+        JPanel panel = new JPanel(new BorderLayout());
+
+        String[] columnNames = {"Name", "Age", "Gender", "Token No", "Disease", "Doctor", "Fee"};
+        Vector<Vector<String>> data = new Vector<>();
+
+        for (Patient patient : registry.getAllPatients()) 
+        {
+            Vector<String> row = new Vector<>();
+            row.add(patient.getName());
+            row.add(String.valueOf(patient.getAge()));
+            row.add(patient.getGender());
+            row.add(patient.getTokenNumber());
+            row.add(patient.getDisease());
+            row.add(patient.getDoctorName());
+            row.add(String.valueOf(patient.getMedicalFee()));
+            data.add(row);
+        }
+
+        patientTable = new JTable(data, new Vector<>(java.util.Arrays.asList(columnNames)));
+        JScrollPane scrollPane = new JScrollPane(patientTable);
+        panel.add(scrollPane, BorderLayout.CENTER);
+
+        JButton updateButton = createButton("Update Patient", e -> updatePatientDetails());
+        JButton generateBillButton = createButton("Generate Bill", e -> generateBill());
+        JPanel actionPanel = new JPanel(new FlowLayout());
+        actionPanel.add(updateButton);
+        actionPanel.add(generateBillButton);
+        panel.add(actionPanel, BorderLayout.SOUTH);
+
+        JButton backButton = createBackButton(e -> showAdminPanel());
+        panel.add(backButton, BorderLayout.NORTH);
+
+        setContentPanel(panel);
+    }
+
+    private void updatePatientDetails() 
+      {
+        String token = JOptionPane.showInputDialog("Enter patient token number:");
+        Patient patient = registry.findPatientByToken(token);
+        if (patient != null) 
+       {
+            String disease = JOptionPane.showInputDialog("Enter disease:");
+            String doctorName = JOptionPane.showInputDialog("Enter doctor name:");
+            try 
+               {
+                double fee = Double.parseDouble(JOptionPane.showInputDialog("Enter medical fee:"));
+                patient.updateDetails(disease, doctorName, fee);
+                JOptionPane.showMessageDialog(frame, "Patient details updated.");
+                } 
+                catch (NumberFormatException e) 
+              {
+                JOptionPane.showMessageDialog(frame, "Please enter a valid medical fee.");
+             }
+        } 
+      else 
+         {
+            JOptionPane.showMessageDialog(frame, "Patient not found.");
+        }
+    }
+
+    private void generateBill() 
+   {
+        String token = JOptionPane.showInputDialog("Enter patient token number:");
+        Patient patient = registry.findPatientByToken(token);
+        if (patient != null) {
+            patient.displayBill();
+        }
+         else 
+        {
+            JOptionPane.showMessageDialog(frame, "Patient not found.");
+        }
+    }
+
+    private void setContentPanel(JPanel panel) 
+   {
+        frame.setContentPane(panel);
+        frame.revalidate();
+        frame.repaint();
+    }
+
+    private String generateUniqueToken() 
+    {
+        Random rand = new Random();
+        return String.format("T%04d", rand.nextInt(10000));
+    }
+}

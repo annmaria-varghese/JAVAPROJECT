@@ -1,0 +1,228 @@
+import java.sql.*;
+import java.util.Random;
+import java.util.Scanner;
+
+public class HospitalManagement
+{
+    private Connection connection;
+    private Scanner scanner = new Scanner(System.in);
+    private final String adminPassword = "admin123";
+
+    public static void main(String[] args)
+    {
+        new HospitalManagement().mainMenu();
+    }
+
+    public HospitalManagement()
+    {
+        try
+        {
+            // Establish database connection
+            Class.forName("com.mysql.cj.jdbc.Driver");
+            connection = DriverManager.getConnection(
+                "jdbc:mysql://localhost:3306/hospitaldb", "root", "");
+        }
+        catch (Exception e)
+        {
+            System.out.println("Error connecting to database: " + e.getMessage());
+            System.exit(1);
+        }
+    }
+
+    private void mainMenu()
+    {
+        while (true)
+        {
+            System.out.println("\n--- WELCOME TO JJ HOSPITAL ---");
+            System.out.println("1. Register Patient");
+            System.out.println("2. Admin Login");
+            System.out.println("3. Exit");
+            System.out.print("Choose an option: ");
+            int choice = scanner.nextInt();
+            scanner.nextLine();
+
+            switch (choice)
+            {
+                case 1 -> registerPatient();
+                case 2 ->
+                {
+                    if (adminLogin())
+                        adminMenu();
+                    else
+                        System.out.println("Invalid password.");
+                }
+                case 3 ->
+                {
+                    System.out.println("Thank you for visiting JJ Hospital.");
+                    return;
+                }
+                default -> System.out.println("Invalid choice. Try again.");
+            }
+        }
+    }
+
+    private boolean adminLogin()
+    {
+        System.out.print("Enter Admin Password: ");
+        return scanner.nextLine().equals(adminPassword);
+    }
+
+    private void registerPatient()
+    {
+        try
+        {
+            System.out.print("Enter patient name: ");
+            String name = scanner.nextLine();
+            System.out.print("Enter patient age: ");
+            int age = scanner.nextInt();
+            scanner.nextLine();
+
+            System.out.print("Enter patient gender (M/F/Other): ");
+            String gender = scanner.nextLine();
+            String token = generateUniqueToken();
+
+            String sql = "INSERT INTO patients (token_number, name, age, gender) VALUES (?, ?, ?, ?)";
+            PreparedStatement stmt = connection.prepareStatement(sql);
+            stmt.setString(1, token);
+            stmt.setString(2, name);
+            stmt.setInt(3, age);
+            stmt.setString(4, gender);
+            stmt.executeUpdate();
+
+            System.out.println("Patient registered successfully. Token: " + token);
+        }
+        catch (SQLException e)
+        {
+            System.out.println("Error registering patient: " + e.getMessage());
+        }
+    }
+
+    private void adminMenu()
+    {
+        while (true)
+        {
+            System.out.println("\nAdmin Menu:");
+            System.out.println("1. View all patients");
+            System.out.println("2. Edit patient details");
+            System.out.println("3. Display patient bill");
+            System.out.println("4. Exit");
+            System.out.print("Choose an option: ");
+            int choice = scanner.nextInt();
+            scanner.nextLine();
+
+            switch (choice)
+            {
+                case 1 -> viewAllPatients();
+                case 2 -> editPatientDetails();
+                case 3 -> displayPatientBill();
+                case 4 ->
+                {
+                    return;
+                }
+                default -> System.out.println("Invalid choice. Try again.");
+            }
+        }
+    }
+
+    private void viewAllPatients()
+    {
+        try
+        {
+            Statement stmt = connection.createStatement();
+            ResultSet rs = stmt.executeQuery("SELECT * FROM patients");
+            System.out.printf("%-10s %-15s %-6s %-10s %-15s %-15s %-10s%n",
+                "Token", "Name", "Age", "Gender", "Disease", "Doctor", "Fee");
+            System.out.println("----------------------------------------------------------------------");
+            while (rs.next())
+            {
+                System.out.printf("%-10s %-15s %-6d %-10s %-15s %-15s %-10.2f%n",
+                    rs.getString("token_number"),
+                    rs.getString("name"),
+                    rs.getInt("age"),
+                    rs.getString("gender"),
+                    rs.getString("disease"),
+                    rs.getString("doctor_name"),
+                    rs.getDouble("medical_fee"));
+            }
+        }
+        catch (SQLException e)
+        {
+            System.out.println("Error fetching patients: " + e.getMessage());
+        }
+    }
+
+    private void editPatientDetails()
+    {
+        try
+        {
+            System.out.print("Enter patient token number: ");
+            String token = scanner.nextLine();
+
+            System.out.print("Enter disease: ");
+            String disease = scanner.nextLine();
+            System.out.print("Enter doctor name: ");
+            String doctorName = scanner.nextLine();
+            System.out.print("Enter medical fee: ");
+            double fee = scanner.nextDouble();
+            scanner.nextLine();
+
+            String sql = "UPDATE patients SET disease = ?, doctor_name = ?, medical_fee = ? WHERE token_number = ?";
+            PreparedStatement stmt = connection.prepareStatement(sql);
+            stmt.setString(1, disease);
+            stmt.setString(2, doctorName);
+            stmt.setDouble(3, fee);
+            stmt.setString(4, token);
+            int rows = stmt.executeUpdate();
+
+            if (rows > 0)
+            {
+                System.out.println("Patient details updated successfully.");
+            }
+            else
+            {
+                System.out.println("Patient not found.");
+            }
+        }
+        catch (SQLException e)
+        {
+            System.out.println("Error updating patient details: " + e.getMessage());
+        }
+    }
+
+    private void displayPatientBill()
+    {
+        try
+        {
+            System.out.print("Enter token number: ");
+            String token = scanner.nextLine();
+
+            String sql = "SELECT * FROM patients WHERE token_number = ?";
+            PreparedStatement stmt = connection.prepareStatement(sql);
+            stmt.setString(1, token);
+            ResultSet rs = stmt.executeQuery();
+
+            if (rs.next())
+            {
+                System.out.println("\n--- BILL DETAILS ---");
+                System.out.println("Patient Name : " + rs.getString("name"));
+                System.out.println("Doctor       : " + rs.getString("doctor_name"));
+                System.out.println("Disease      : " + rs.getString("disease"));
+                System.out.println("Medical Fee  : $" + rs.getDouble("medical_fee"));
+                System.out.println("-----------------------------------------------------------------------------------------------------");
+            }
+            else
+            {
+                System.out.println("Patient not found.");
+            }
+        }
+        catch (SQLException e)
+        {
+            System.out.println("Error displaying bill: " + e.getMessage());
+        }
+    }
+
+    private String generateUniqueToken()
+    {
+        return String.format("%06d", new Random().nextInt(1000000));
+    }
+}
