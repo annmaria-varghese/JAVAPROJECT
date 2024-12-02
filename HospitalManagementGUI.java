@@ -94,6 +94,10 @@ public class HospitalManagementGUI
     private JPasswordField passwordField;
     private JTable patientTable;
     private final String adminPassword = "MICKEYMOUSE";
+    private final String dbName = "hospital_db";  // Database name
+    private final String ipAddress = "localhost";  // Change to your DB server IP address if needed
+    private final String username = "root";         // Your DB username
+    private final String password = "";              // Your DB password
 
     public static void main(String[] args) 
     {
@@ -115,9 +119,36 @@ public class HospitalManagementGUI
     {
         try 
         {
+            // Load the MySQL JDBC Driver
             Class.forName("com.mysql.cj.jdbc.Driver");
-            connection = DriverManager.getConnection("jdbc:mysql://localhost:3306/hospital_db", "root", "");
-            System.out.println("Connected to database.");
+
+            // Step 1: Connect to MySQL server and create database if doesn't exist
+            try (Connection conn = DriverManager.getConnection("jdbc:mysql://" + ipAddress + ":3306", username, password);
+                 Statement stmt = conn.createStatement()) 
+            {
+                // Create database
+                String createDatabaseSQL = "CREATE DATABASE IF NOT EXISTS " + dbName;
+                stmt.executeUpdate(createDatabaseSQL);
+                System.out.println("Database created or exists: " + dbName);
+            }
+            
+            // Step 2: Connect to the specific database
+            connection = DriverManager.getConnection("jdbc:mysql://" + ipAddress + ":3306/" + dbName, username, password);
+            System.out.println("Connected to database: " + dbName);
+            
+            // Create patients table if it doesn't exist
+            String createTableSQL = "CREATE TABLE IF NOT EXISTS patients (" +
+                    "id INT AUTO_INCREMENT PRIMARY KEY, " +
+                    "token_number VARCHAR(255) NOT NULL UNIQUE, " +
+                    "name VARCHAR(255) NOT NULL, " +
+                    "age INT NOT NULL, " +
+                    "gender ENUM('Male', 'Female', 'Other'), " +
+                    "disease VARCHAR(255), " +
+                    "doctor_name VARCHAR(255), " +
+                    "medical_fee DECIMAL(10, 2))";
+            Statement stmt = connection.createStatement();
+            stmt.execute(createTableSQL);
+            stmt.close();
         } 
         catch (Exception e) 
         {
@@ -128,7 +159,7 @@ public class HospitalManagementGUI
 
     private void showWelcomeScreen() 
     {
-        String welcomeImageUrl = "https://img.freepik.com/premium-vector/modern-colored-medical-hospital-building-with-sky-clouds_1322206-57571.jpg?w=826"; // Welcome image
+        String welcomeImageUrl = "https://img.freepik.com/premium-vector/modern-colored-medical-hospital-building-with-sky-clouds_1322206-57571.jpg"; // Welcome image
         BackgroundPanel welcomePanel = new BackgroundPanel(welcomeImageUrl);
         welcomePanel.setLayout(new GridBagLayout());
         GridBagConstraints gbc = new GridBagConstraints();
@@ -237,8 +268,6 @@ public class HospitalManagementGUI
         femaleButton = new JRadioButton("Female");
         otherButton = new JRadioButton("Other");
         otherGenderField = new JTextField(10);
-
-        // Initially disable the custom gender field
         otherGenderField.setEnabled(false);
 
         genderGroup = new ButtonGroup();
@@ -246,7 +275,6 @@ public class HospitalManagementGUI
         genderGroup.add(femaleButton);
         genderGroup.add(otherButton);
 
-        // Add ActionListeners to radio buttons to enable/disable the custom gender field
         otherButton.addActionListener(e -> otherGenderField.setEnabled(true));
         maleButton.addActionListener(e -> otherGenderField.setEnabled(false));
         femaleButton.addActionListener(e -> otherGenderField.setEnabled(false));
@@ -276,7 +304,8 @@ public class HospitalManagementGUI
             String name = nameField.getText();
             int age = Integer.parseInt(ageField.getText());
             String gender = getSelectedGender();
-            if (gender.isEmpty()) return;
+            if (gender.isEmpty()) 
+                return;
 
             String token = generateUniqueToken();
             Patient newPatient = new Patient(name, age, gender, token);
@@ -320,8 +349,10 @@ public class HospitalManagementGUI
 
     private String getSelectedGender() 
     {
-        if (maleButton.isSelected()) return "Male";
-        if (femaleButton.isSelected()) return "Female";
+        if (maleButton.isSelected()) 
+            return "Male";
+        if (femaleButton.isSelected()) 
+            return "Female";
         if (otherButton.isSelected()) 
         {
             String customGender = otherGenderField.getText().trim();
